@@ -1,0 +1,48 @@
+name: pool_temp_app
+description: Frontend for the PoolApi
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.19.6 <3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  hooks_riverpod: ^2.3.6
+  flutter_hooks: ^0.18.6
+  dio:
+  json_annotation: ^4.8.1
+  go_router: ^7.1.1
+  intl: ^0.18.1
+  shared_preferences: ^2.1.1
+  draw_graph: ^1.0.0
+  flutter_native_splash: ^2.2.19
+  flex_color_scheme: ^7.0.5
+  connectivity_plus: ^4.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+  build_runner: ^2.3.3
+  json_serializable: ^6.6.2
+  flutter_launcher_icons: "^0.13.1"
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon/Frame 1.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  image: "icon/Frame 1.png"
+  color: "#3949DF"
+
