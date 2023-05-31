@@ -1,0 +1,5 @@
+token: "[Your Token]"
+device_id: "[Your Device ID]"
+port: "8090"
+upload_url: "[Remote URL]"
+batch: 10 # Number of records in each batch, records are about 1 Minute apart

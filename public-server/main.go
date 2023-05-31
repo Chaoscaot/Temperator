@@ -24,12 +24,13 @@ type ChangeStatus struct {
 }
 
 type Config struct {
-	Database string `yaml:"database"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	Token    string `yaml:"token"`
+	Database   string `yaml:"database"`
+	User       string `yaml:"user"`
+	Password   string `yaml:"password"`
+	Host       string `yaml:"host"`
+	Port       string `yaml:"port"`
+	Token      string `yaml:"token"`
+	ServerPort string `yaml:"serverPort"`
 }
 
 func TokenValidator(config *Config) gin.HandlerFunc {
@@ -170,7 +171,7 @@ func main() {
 			Hourcol                          time.Time
 			Humidity, OutsideTemp, WaterTemp float64
 		}
-		err := db.Raw("SELECT FROM_UNIXTIME(UNIX_TIMESTAMP(time) - MOD(UNIX_TIMESTAMP(time), 3600)) as hourcol, AVG(humidity) as Humidity, AVG(outside_temp) as OutsideTemp, AVG(water_temp) as WaterTemp FROM data_points WHERE DATEDIFF(NOW(), time) < 1 GROUP BY hourcol").Scan(&result).Error
+		err := db.Raw("SELECT FROM_UNIXTIME(UNIX_TIMESTAMP(time) - MOD(UNIX_TIMESTAMP(time), 3600)) as hourcol, AVG(humidity) as Humidity, AVG(outside_temp) as OutsideTemp, AVG(water_temp) as WaterTemp FROM data_points WHERE TIMESTAMPDIFF(hour, time, NOW()) < 24 GROUP BY hourcol").Scan(&result).Error
 		if err != nil {
 			context.JSON(500, gin.H{"error": "internal server error"})
 			return
@@ -196,5 +197,5 @@ func main() {
 		context.JSON(200, data)
 	})
 
-	r.Run(":8080")
+	r.Run(":" + config.ServerPort)
 }

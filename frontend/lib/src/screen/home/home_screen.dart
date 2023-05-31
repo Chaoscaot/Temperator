@@ -46,6 +46,7 @@ class HomeScreen extends HookConsumerWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.home),
               title: const Text("Start"),
               onTap: () {
                 Navigator.of(context).pop();
@@ -81,12 +82,10 @@ class HomeScreen extends HookConsumerWidget {
                 },
               )
             ],
-            /*
-
-             */
             iconTheme: const IconThemeData(color: Colors.white),
             backgroundColor: Theme.of(context).primaryColor,
             expandedHeight: 400,
+            primary: true,
             flexibleSpace: FlexibleSpaceBar(
               background: currentTemp.isLoading
                   ? Center(
@@ -97,9 +96,18 @@ class HomeScreen extends HookConsumerWidget {
                   : FittedBox(
                       child: Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                              "${(currentTemp.value!.waterTemp * 100).roundToDouble() / 100} C°",
-                              style: const TextStyle(color: Colors.white))),
+                          child: Column(
+                            children: [
+                              Text(
+                                  "${(currentTemp.value!.waterTemp * 100).roundToDouble() / 100} C°",
+                                  style: const TextStyle(color: Colors.white)),
+                              Text(
+                                  DateFormat("dd.MM.yyyy HH:mm")
+                                      .format(currentTemp.value!.time),
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 4)),
+                            ],
+                          )),
                     ),
               title: const Text(
                 "Pool Temperatur",
@@ -120,7 +128,6 @@ class HomeScreen extends HookConsumerWidget {
                     final dates = data
                         .map((e) => DateTime.fromMillisecondsSinceEpoch(e.time))
                         .toList();
-                    print(dates);
                     final maxWaterTemp = data
                         .map((e) => e.waterTemp)
                         .reduce((a, b) => a > b ? a : b);
@@ -193,7 +200,7 @@ class HomeScreen extends HookConsumerWidget {
                       ),
                     );
                   },
-                  error: (err, stack) => Text(err.toString()),
+                  error: (err, stack) => throw err,
                   loading: () => const LinearProgressIndicator(),
                 ),
               ],

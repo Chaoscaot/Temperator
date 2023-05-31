@@ -7,6 +7,9 @@
   <component name="ExtraIconsSettingsProject">
     <option name="ignoreWarnings" value="false" />
   </component>
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <type id="android" />
+  </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>

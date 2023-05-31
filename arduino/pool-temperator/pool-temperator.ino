@@ -1,23 +1,24 @@
-#include "DHT.h"
+#include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <Thermistor.h>
 #include <NTC_Thermistor.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include "secret.h"
 
 #define DHTPIN 14
 #define DHTTYPE DHT11
 
 #ifndef STASSID
-#define STASSID "Max-WLAN"
-#define STAPSK "Max-WLAN"
+#define STASSID WLAN_NAME
+#define STAPSK WLAN_PASSWORD
 #endif
 
-#define Referenzwiderstand   10000 // Widerstandswert des Widerstandes der mit dem NTC in Reihe geschaltet wurde.
-#define Nominalwiderstand      10000 // Widerstand des NTC bei Normaltemperatur
-#define Nominaltemperatur    25 // Temperatur, bei der der NTC den angegebenen Widerstand hat
-#define BWert                3950 // Beta Koeffizient(zu finden im Datenblatt des NTC)
+#define Referenzwiderstand   10000
+#define Nominalwiderstand      10000
+#define Nominaltemperatur    25
+#define BWert                3950
 
 const char* ssid = STASSID;
 const char* password = STAPSK;
@@ -38,6 +39,8 @@ LiquidCrystal_I2C lcd(0x3F, 16, 2);
 int sendTimer = 1;
 
 int clearNum = -1;
+
+bool wasError = false;
 
 byte grad[8] = {
 	0b01100,
@@ -77,7 +80,7 @@ void setup() {
   Serial.println("");
   lcd.clear();
   lcd.setCursor(0, 1);
-  lcd.print("WiFi Verbunden"); 
+  lcd.print("WiFi Verbunden");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
@@ -119,6 +122,7 @@ void loop() {
 
   // check if any reads failed
   if (isnan(humi) || isnan(tempC) || isnan(temp)) {
+    wasError = true;
     client.println("error: Failed to read from sensor!");
 
     clearLcd(1);
@@ -135,7 +139,6 @@ void loop() {
       lcd.print("Wasser ");
     }
   } else {
-
     clearLcd(0);
     lcd.setCursor(0, 0);
     lcd.print("Wasser: " + String(temp) + "C");
@@ -144,6 +147,11 @@ void loop() {
     lcd.print("Aussen: " + String(tempC) + "C");
     lcd.write(0);
     
+    if(wasError) {
+      wasError = false;
+      sendTimer = 1;
+    }
+
     if(--sendTimer == 0) {
       client.print("Hum:");
       client.print(humi);
@@ -157,7 +165,7 @@ void loop() {
 
       client.print("Temp2:");
       client.println(temp);
-      sendTimer = 60;
+      sendTimer = 60 - 4;
     }
   }
   delay(1000);

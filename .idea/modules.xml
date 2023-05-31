@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/frontend/frontend.iml" filepath="$PROJECT_DIR$/frontend/frontend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/local-server.iml" filepath="$PROJECT_DIR$/local-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/pool-temperator.iml" filepath="$PROJECT_DIR$/pool-temperator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/public-server.iml" filepath="$PROJECT_DIR$/public-server.iml" />
     </modules>
   </component>
 </project>

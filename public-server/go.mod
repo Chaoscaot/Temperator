@@ -1,4 +1,4 @@
-module open-server
+module public-server
 
 go 1.20
 
