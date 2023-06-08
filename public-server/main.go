@@ -149,7 +149,18 @@ func main() {
 			context.JSON(500, gin.H{"error": "internal server error"})
 			return
 		}
-		context.JSON(200, status)
+
+		var result struct {
+			Time     int64
+			DeviceID string
+			Status   string
+		}
+
+		result.Time = status.Time.UnixMilli()
+		result.DeviceID = status.DeviceID
+		result.Status = status.Status
+
+		context.JSON(200, result)
 	})
 
 	r.GET("/api/v1/devices/:id/current", func(context *gin.Context) {
@@ -163,7 +174,22 @@ func main() {
 			context.JSON(500, gin.H{"error": "internal server error"})
 			return
 		}
-		context.JSON(200, data)
+
+		var result struct {
+			Time        int64
+			DeviceID    string
+			Humidity    float64
+			OutsideTemp float64
+			WaterTemp   float64
+		}
+
+		result.Time = data.Time.UnixMilli()
+		result.DeviceID = data.DeviceID
+		result.Humidity = data.Humidity
+		result.OutsideTemp = data.OutsideTemp
+		result.WaterTemp = data.WaterTemp
+
+		context.JSON(200, result)
 	})
 
 	r.GET("/api/v1/devices/:id/chart", func(context *gin.Context) {

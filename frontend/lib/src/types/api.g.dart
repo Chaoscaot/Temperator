@@ -8,7 +8,7 @@ part of 'api.dart';
 
 CurrentTemperature _$CurrentTemperatureFromJson(Map<String, dynamic> json) =>
     CurrentTemperature(
-      time: DateTime.parse(json['Time'] as String),
+      time: json['Time'] as int,
       deviceID: json['DeviceID'] as String,
       humidity: (json['Humidity'] as num).toDouble(),
       outsideTemp: (json['OutsideTemp'] as num).toDouble(),
@@ -17,7 +17,7 @@ CurrentTemperature _$CurrentTemperatureFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$CurrentTemperatureToJson(CurrentTemperature instance) =>
     <String, dynamic>{
-      'Time': instance.time.toIso8601String(),
+      'Time': instance.time,
       'DeviceID': instance.deviceID,
       'Humidity': instance.humidity,
       'OutsideTemp': instance.outsideTemp,
@@ -46,4 +46,17 @@ Map<String, dynamic> _$ChartDataToJson(ChartData instance) => <String, dynamic>{
       'Humidity': instance.humidity,
       'OutsideTemp': instance.outsideTemp,
       'WaterTemp': instance.waterTemp,
+    };
+
+DeviceStatus _$DeviceStatusFromJson(Map<String, dynamic> json) => DeviceStatus(
+      time: json['Time'] as int,
+      deviceID: json['DeviceID'] as String,
+      status: json['Status'] as String,
+    );
+
+Map<String, dynamic> _$DeviceStatusToJson(DeviceStatus instance) =>
+    <String, dynamic>{
+      'Time': instance.time,
+      'DeviceID': instance.deviceID,
+      'Status': instance.status,
     };

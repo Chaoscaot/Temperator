@@ -16,13 +16,21 @@ class PoolRepository {
 
   Future<List<ChartData>> loadChartData() {
     return _dio.get("/api/v1/devices/$_device/chart").then((value) =>
-        (value.data as List<dynamic>)
+        ((value.data ?? []) as List<dynamic>)
             .map((e) => ChartData.fromJson(e))
             .toList());
   }
 
   Future<List<Device>> loadDevices() {
     return _dio.get("/api/v1/devices").then((value) =>
-        (value.data as List<dynamic>).map((e) => Device.fromJson(e)).toList());
+        ((value.data ?? []) as List<dynamic>)
+            .map((e) => Device.fromJson(e))
+            .toList());
+  }
+
+  Future<DeviceStatus> loadStatus() {
+    return _dio
+        .get("/api/v1/devices/$_device/status")
+        .then((value) => DeviceStatus.fromJson(value.data));
   }
 }

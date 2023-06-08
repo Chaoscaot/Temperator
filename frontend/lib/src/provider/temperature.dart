@@ -51,3 +51,8 @@ final chartDataProvider = FutureProvider.autoDispose
     .family<List<ChartData>, String>((ref, devId) async {
   return ref.watch(deviceProvider(devId)).loadChartData();
 });
+
+final deviceStatusProvider =
+    FutureProvider.autoDispose.family<DeviceStatus, String>((ref, devId) async {
+  return ref.watch(deviceProvider(devId)).loadStatus();
+});

@@ -1,10 +1,15 @@
+import 'dart:math';
+
 import 'package:draw_graph/draw_graph.dart';
 import 'package:draw_graph/models/feature.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pool_temp_app/src/provider/temperature.dart';
 import 'package:intl/intl.dart';
+import 'package:pool_temp_app/src/messages/message.dart';
+import 'package:pool_temp_app/src/screen/misc/error_screen.dart';
 
 class HomeScreen extends HookConsumerWidget {
   HomeScreen({
@@ -15,20 +20,37 @@ class HomeScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedTemp = useState(0);
+
     final device = ref.watch(deviceIdProvider);
 
     if (device.isLoading) {
       return const Center(child: CircularProgressIndicator());
     } else if (device.hasError) {
-      return Center(child: Text(device.asError!.error.toString()));
+      final error = ErrorObject(
+        error: device.error.toString(),
+        stackTrace: StackTrace.current.toString(),
+        onRetry: (context) {
+          ref.invalidate(deviceIdProvider);
+        },
+      );
+      return ErrorScreen(errorObject: error);
     }
 
     final currentTemp = ref.watch(currentTempProvider(device.asData!.value));
 
     if (currentTemp.hasError) {
-      return Center(child: Text(currentTemp.asError!.error.toString()));
+      final error = ErrorObject(
+        error: currentTemp.error.toString(),
+        stackTrace: StackTrace.current.toString(),
+        onRetry: (context) {
+          ref.invalidate(currentTempProvider(device.asData!.value));
+        },
+      );
+      return ErrorScreen(errorObject: error);
     }
 
+    final status = ref.watch(deviceStatusProvider(device.asData!.value));
     final chartData = ref.watch(chartDataProvider(device.asData!.value));
 
     return Scaffold(
@@ -41,13 +63,13 @@ class HomeScreen extends HookConsumerWidget {
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor,
               ),
-              child: const FittedBox(
-                child: Text("Pool Temperatur"),
+              child: FittedBox(
+                child: Text(drawerHeader()),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.home),
-              title: const Text("Start"),
+              title: Text(drawerStart()),
               onTap: () {
                 Navigator.of(context).pop();
               },
@@ -55,7 +77,7 @@ class HomeScreen extends HookConsumerWidget {
             const Spacer(),
             ListTile(
               leading: const Icon(Icons.settings),
-              title: const Text("Pool Wählen"),
+              title: Text(drawerPoolSelect()),
               onTap: () {
                 Navigator.of(context).pop();
                 GoRouter.of(context).push("/init");
@@ -79,6 +101,7 @@ class HomeScreen extends HookConsumerWidget {
                 onPressed: () {
                   ref.invalidate(currentTempProvider(device.asData!.value));
                   ref.invalidate(chartDataProvider(device.asData!.value));
+                  ref.invalidate(deviceStatusProvider(device.asData!.value));
                 },
               )
             ],
@@ -93,25 +116,141 @@ class HomeScreen extends HookConsumerWidget {
                         color: Theme.of(context).cardColor,
                       ),
                     )
-                  : FittedBox(
+                  : SafeArea(
                       child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 48),
+                                child: SegmentedButton(
+                                  segments: [
+                                    ButtonSegment(
+                                      icon: const Icon(Icons.water),
+                                      value: 0,
+                                      label: Text(pool()),
+                                    ),
+                                    ButtonSegment(
+                                      icon: const Icon(Icons.thermostat),
+                                      value: 1,
+                                      label: Text(outside()),
+                                    ),
+                                    ButtonSegment(
+                                      icon: const Icon(Icons.wb_cloudy),
+                                      value: 2,
+                                      label: Text(humidity()),
+                                    ),
+                                  ],
+                                  onSelectionChanged: (value) {
+                                    selectedTemp.value = value.first;
+                                  },
+                                  style: ButtonStyle(
+                                    textStyle: MaterialStateProperty.all(
+                                      const TextStyle(
+                                          color: Colors.white, fontSize: 10),
+                                    ),
+                                  ),
+                                  selected: {selectedTemp.value},
+                                ),
+                              ),
+                              const Spacer(),
+                              IndexedStack(
+                                index: selectedTemp.value,
+                                children: [
+                                  Text(
+                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.waterTemp)} C°",
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 64)),
+                                  Text(
+                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.outsideTemp)} C°",
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 64)),
+                                  Text(
+                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.humidity)} %",
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 64)),
+                                ],
+                              ),
                               Text(
-                                  "${(currentTemp.value!.waterTemp * 100).roundToDouble() / 100} C°",
-                                  style: const TextStyle(color: Colors.white)),
-                              Text(
-                                  DateFormat("dd.MM.yyyy HH:mm")
-                                      .format(currentTemp.value!.time),
+                                  DateFormat.yMd().add_Hm().format(
+                                      DateTime.fromMillisecondsSinceEpoch(
+                                          currentTemp.value!.time)),
                                   style: const TextStyle(
-                                      color: Colors.white70, fontSize: 4)),
+                                      color: Colors.white70, fontSize: 16)),
+                              const Spacer(flex: 1),
+                              Row(
+                                children: [
+                                  status.when(data: (data) {
+                                    return IconButton(
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title: Text(
+                                                  "Status: ${data.status}"),
+                                              content: Text(DateFormat.yMd()
+                                                  .add_Hm()
+                                                  .format(DateTime
+                                                      .fromMillisecondsSinceEpoch(
+                                                          data.time))),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: const Text("OK"),
+                                                )
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      },
+                                      icon: Icon(
+                                        data.status == "ok"
+                                            ? Icons.check_circle_outline
+                                            : Icons.error_outline,
+                                        color: data.status == "ok"
+                                            ? Colors.green
+                                            : Colors.red,
+                                      ),
+                                    );
+                                  }, error: (err, stack) {
+                                    return IconButton(
+                                      onPressed: () {
+                                        context.push(
+                                          "/error",
+                                          extra: ErrorObject(
+                                            error: err.toString(),
+                                            stackTrace: stack.toString(),
+                                            onRetry: (context) {
+                                              context.pop();
+                                            },
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.warning_amber_outlined,
+                                        color: Colors.red,
+                                      ),
+                                    );
+                                  }, loading: () {
+                                    return const IconButton(
+                                      onPressed: null,
+                                      icon: Icon(
+                                        Icons.refresh_outlined,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
                             ],
                           )),
                     ),
-              title: const Text(
-                "Pool Temperatur",
-              ),
+              title: Text(title()),
             ),
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(
@@ -125,6 +264,10 @@ class HomeScreen extends HookConsumerWidget {
               [
                 chartData.when(
                   data: (data) {
+                    if (data.isEmpty) {
+                      return Center(child: Text(graphNoData()));
+                    }
+
                     final dates = data
                         .map((e) => DateTime.fromMillisecondsSinceEpoch(e.time))
                         .toList();
@@ -135,6 +278,8 @@ class HomeScreen extends HookConsumerWidget {
                         .map((e) => e.outsideTemp)
                         .reduce((a, b) => a > b ? a : b);
 
+                    final maxAll = max(maxWaterTemp, maxOutsideTemp);
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8.0, vertical: 16),
@@ -143,30 +288,38 @@ class HomeScreen extends HookConsumerWidget {
                           LineGraph(
                             features: [
                               Feature(
-                                title: "Außen Temperatur",
+                                title: outsideTemperature(),
                                 color: Colors.red,
                                 data: data
-                                    .map((e) => e.outsideTemp / maxOutsideTemp)
+                                    .map((e) => e.outsideTemp / maxAll)
                                     .toList(),
                               ),
                               Feature(
-                                title: "Pool Temperatur",
+                                title: poolTemperature(),
                                 color: Colors.blue,
                                 data: data
-                                    .map((e) => e.waterTemp / maxWaterTemp)
+                                    .map((e) => e.waterTemp / maxAll)
                                     .toList(),
                               ),
                             ],
                             size: const Size(double.infinity, 400),
                             labelY: [
                               "0",
-                              "${(maxWaterTemp * 0.25).round()}",
-                              "${(maxWaterTemp * 0.5).round()}",
-                              "${(maxWaterTemp * 0.75).round()}",
-                              "${maxWaterTemp.round()}"
+                              NumberFormat.decimalPatternDigits(
+                                      decimalDigits: 0)
+                                  .format((maxAll * 0.25)),
+                              NumberFormat.decimalPatternDigits(
+                                      decimalDigits: 0)
+                                  .format((maxAll * 0.50)),
+                              NumberFormat.decimalPatternDigits(
+                                      decimalDigits: 0)
+                                  .format((maxAll * 0.75)),
+                              NumberFormat.decimalPatternDigits(
+                                      decimalDigits: 0)
+                                  .format(maxAll),
                             ],
                             labelX: dates
-                                .map((e) => DateFormat("HH:mm").format(e))
+                                .map((e) => DateFormat.Hm().format(e))
                                 .toList(),
                             showDescription: true,
                           ),
@@ -178,21 +331,17 @@ class HomeScreen extends HookConsumerWidget {
                               Feature(
                                 data:
                                     data.map((e) => e.humidity / 100).toList(),
-                                title: "Luftfeuchtigkeit",
+                                title: humidity(),
                                 color: Colors.blue,
                               ),
                             ],
                             size: const Size(double.infinity, 400),
                             labelX: dates
-                                .map((e) => DateFormat("HH:mm").format(e))
+                                .map((e) => DateFormat.Hm().format(e))
                                 .toList(),
-                            labelY: const [
-                              "0",
-                              "20",
-                              "40",
-                              "60",
-                              "80",
-                              "100",
+                            labelY: [
+                              for (var i = 0; i <= 100; i += 20)
+                                NumberFormat.percentPattern().format(i / 100),
                             ],
                             showDescription: true,
                           )

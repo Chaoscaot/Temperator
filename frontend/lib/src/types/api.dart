@@ -5,7 +5,7 @@ part 'api.g.dart';
 @JsonSerializable()
 class CurrentTemperature {
   @JsonKey(name: 'Time')
-  DateTime time;
+  int time;
   @JsonKey(name: "DeviceID")
   String deviceID;
   @JsonKey(name: "Humidity")
@@ -57,4 +57,25 @@ class ChartData {
   factory ChartData.fromJson(Map<String, dynamic> json) =>
       _$ChartDataFromJson(json);
   Map<String, dynamic> toJson() => _$ChartDataToJson(this);
+}
+
+@JsonSerializable()
+class DeviceStatus {
+  @JsonKey(name: 'Time')
+  int time;
+  @JsonKey(name: "DeviceID")
+  String deviceID;
+  @JsonKey(name: "Status")
+  String status;
+
+  DeviceStatus({
+    required this.time,
+    required this.deviceID,
+    required this.status,
+  });
+
+  factory DeviceStatus.fromJson(Map<String, dynamic> json) =>
+      _$DeviceStatusFromJson(json);
+
+  Map<String, dynamic> toJson() => _$DeviceStatusToJson(this);
 }

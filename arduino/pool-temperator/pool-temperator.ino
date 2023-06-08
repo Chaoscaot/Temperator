@@ -34,8 +34,6 @@ WiFiClient client;
 
 Thermistor* thermistor;
 
-LiquidCrystal_I2C lcd(0x3F, 16, 2);
-
 int sendTimer = 1;
 
 int clearNum = -1;
@@ -53,10 +51,31 @@ byte grad[8] = {
 	0b00000
 };
 
-void setup() {
+int getLcdAddress() {
   Serial.begin(115200);
-  dht.begin();
   Wire.begin(2,0);
+  byte error, address;
+  Serial.println("Scanning...");
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+    if (error == 0) {
+      Serial.print("I2C device found at address 0x");
+      if (address<16) {
+        Serial.print("0");
+      }
+      Serial.println(address,HEX);
+      return address;
+    } 
+  }
+  Serial.println("No I2C devices found\n");
+  return 0;
+}
+
+LiquidCrystal_I2C lcd(getLcdAddress(), 16, 2);
+
+void setup() {
+  dht.begin();
   lcd.init();
   lcd.backlight();
   lcd.print("Startet...");

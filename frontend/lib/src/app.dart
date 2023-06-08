@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pool_temp_app/src/messages/message.dart';
 import 'package:pool_temp_app/src/provider/router.dart';
 
 class PoolTemperaturApp extends HookConsumerWidget {
@@ -11,8 +12,9 @@ class PoolTemperaturApp extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: "Pool Temperature",
+      title: poolTemperature(),
       routerDelegate: router.routerDelegate,
+      routeInformationProvider: router.routeInformationProvider,
       routeInformationParser: router.routeInformationParser,
       theme: ThemeData(
           useMaterial3: true,

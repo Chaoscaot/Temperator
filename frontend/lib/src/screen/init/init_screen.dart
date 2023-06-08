@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pool_temp_app/src/messages/message.dart';
 import 'package:pool_temp_app/src/provider/temperature.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,7 +16,7 @@ class SetupScreen extends HookConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Pool Wählen"),
+        title: Text(drawerPoolSelect()),
       ),
       body: devices.when(
           data: (data) {
@@ -25,12 +26,10 @@ class SetupScreen extends HookConsumerWidget {
                   ListTile(
                     title: Text(device.name),
                     onTap: () async {
-                      final router = GoRouter.of(context);
                       SharedPreferences prefs =
                           await ref.read(prefsProvider.future);
-                      prefs.setString("device", device.id);
-                      prefs.reload();
-                      router.go("/");
+                      await prefs.setString("device", device.id);
+                      GoRouter.of(context).go("/");
                     },
                   )
               ],
