@@ -10,7 +10,7 @@ final prefsProvider = FutureProvider<SharedPreferences>((ref) async {
 });
 
 final baseUrlProvider = Provider<String>((ref) {
-  return "http://192.168.178.36:8080";
+  return "https://pool.chaoscaot.de";
 });
 
 final httpProvider = Provider<Dio>((ref) {

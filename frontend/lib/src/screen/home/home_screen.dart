@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:animations/animations.dart';
 import 'package:draw_graph/draw_graph.dart';
 import 'package:draw_graph/models/feature.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class HomeScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTemp = useState(0);
+    final lastSelectedTemp = useState(0);
 
     final device = ref.watch(deviceIdProvider);
 
@@ -119,135 +121,206 @@ class HomeScreen extends HookConsumerWidget {
                   : SafeArea(
                       child: Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 48),
-                                child: SegmentedButton(
-                                  segments: [
-                                    ButtonSegment(
-                                      icon: const Icon(Icons.water),
-                                      value: 0,
-                                      label: Text(pool()),
+                          child: GestureDetector(
+                            onHorizontalDragEnd: (e) {
+                              if (e.primaryVelocity! > 0) {
+                                if (selectedTemp.value > 0) {
+                                  lastSelectedTemp.value = selectedTemp.value;
+                                  selectedTemp.value = selectedTemp.value - 1;
+                                }
+                              } else {
+                                if (selectedTemp.value < 2) {
+                                  lastSelectedTemp.value = selectedTemp.value;
+                                  selectedTemp.value = selectedTemp.value + 1;
+                                }
+                              }
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 48),
+                                  child: SegmentedButton(
+                                    segments: [
+                                      ButtonSegment(
+                                        icon: const Icon(Icons.water),
+                                        value: 0,
+                                        label: Text(pool()),
+                                      ),
+                                      ButtonSegment(
+                                        icon: const Icon(Icons.thermostat),
+                                        value: 1,
+                                        label: Text(outside()),
+                                      ),
+                                      ButtonSegment(
+                                        icon: const Icon(Icons.wb_cloudy),
+                                        value: 2,
+                                        label: Text(humidity()),
+                                      ),
+                                    ],
+                                    onSelectionChanged: (value) {
+                                      lastSelectedTemp.value =
+                                          selectedTemp.value;
+                                      selectedTemp.value = value.first;
+                                    },
+                                    style: ButtonStyle(
+                                      textStyle: MaterialStateProperty.all(
+                                        const TextStyle(
+                                            color: Colors.white, fontSize: 10),
+                                      ),
                                     ),
-                                    ButtonSegment(
-                                      icon: const Icon(Icons.thermostat),
-                                      value: 1,
-                                      label: Text(outside()),
-                                    ),
-                                    ButtonSegment(
-                                      icon: const Icon(Icons.wb_cloudy),
-                                      value: 2,
-                                      label: Text(humidity()),
-                                    ),
-                                  ],
-                                  onSelectionChanged: (value) {
-                                    selectedTemp.value = value.first;
-                                  },
-                                  style: ButtonStyle(
-                                    textStyle: MaterialStateProperty.all(
-                                      const TextStyle(
-                                          color: Colors.white, fontSize: 10),
-                                    ),
+                                    selected: {selectedTemp.value},
                                   ),
-                                  selected: {selectedTemp.value},
                                 ),
-                              ),
-                              const Spacer(),
-                              IndexedStack(
-                                index: selectedTemp.value,
-                                children: [
-                                  Text(
-                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.waterTemp)} C°",
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 64)),
-                                  Text(
-                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.outsideTemp)} C°",
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 64)),
-                                  Text(
-                                      "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.humidity)} %",
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 64)),
-                                ],
-                              ),
-                              Text(
-                                  DateFormat.yMd().add_Hm().format(
-                                      DateTime.fromMillisecondsSinceEpoch(
-                                          currentTemp.value!.time)),
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 16)),
-                              const Spacer(flex: 1),
-                              Row(
-                                children: [
-                                  status.when(data: (data) {
-                                    return IconButton(
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) {
-                                            return AlertDialog(
-                                              title: Text(
-                                                  "Status: ${data.status}"),
-                                              content: Text(DateFormat.yMd()
-                                                  .add_Hm()
-                                                  .format(DateTime
-                                                      .fromMillisecondsSinceEpoch(
-                                                          data.time))),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text("OK"),
-                                                )
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      },
-                                      icon: Icon(
-                                        data.status == "ok"
-                                            ? Icons.check_circle_outline
-                                            : Icons.error_outline,
-                                        color: data.status == "ok"
-                                            ? Colors.green
-                                            : Colors.red,
+                                const Spacer(),
+                                PageTransitionSwitcher(
+                                  duration: const Duration(milliseconds: 300),
+                                  transitionBuilder: (child, primaryAnimation,
+                                      secondaryAnimation) {
+                                    final anim = primaryAnimation.drive(
+                                      Tween<Offset>(
+                                        begin: Offset(
+                                            (-2 *
+                                                    (lastSelectedTemp.value -
+                                                        selectedTemp.value))
+                                                .toDouble(),
+                                            0),
+                                        end: Offset.zero,
                                       ),
                                     );
-                                  }, error: (err, stack) {
-                                    return IconButton(
-                                      onPressed: () {
-                                        context.push(
-                                          "/error",
-                                          extra: ErrorObject(
-                                            error: err.toString(),
-                                            stackTrace: stack.toString(),
-                                            onRetry: (context) {
-                                              context.pop();
+                                    final anim2 = secondaryAnimation.drive(
+                                      Tween<Offset>(
+                                        end: Offset(
+                                            (2 *
+                                                    (lastSelectedTemp.value -
+                                                        selectedTemp.value))
+                                                .toDouble(),
+                                            0),
+                                        begin: Offset.zero,
+                                      ),
+                                    );
+                                    return SlideTransition(
+                                      position: anim,
+                                      child: SlideTransition(
+                                        position: anim2,
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child: IndexedStack(
+                                    key: ValueKey(selectedTemp.value),
+                                    index: selectedTemp.value,
+                                    children: [
+                                      Text(
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.waterTemp)} C°",
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 64)),
+                                      Text(
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.outsideTemp)} C°",
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 64)),
+                                      Text(
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.humidity)} %",
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 64)),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                    DateFormat.yMd().add_Hm().format(
+                                        DateTime.fromMillisecondsSinceEpoch(
+                                            currentTemp.value!.time)),
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 16)),
+                                const Spacer(flex: 1),
+                                Row(
+                                  children: [
+                                    status.when(data: (data) {
+                                      return IconButton(
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) {
+                                              return AlertDialog(
+                                                title: Text(
+                                                    "Status: ${data.status}"),
+                                                content: Text(DateFormat.yMd()
+                                                    .add_Hm()
+                                                    .format(DateTime
+                                                        .fromMillisecondsSinceEpoch(
+                                                            data.time))),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    },
+                                                    child: const Text("OK"),
+                                                  )
+                                                ],
+                                              );
                                             },
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(
-                                        Icons.warning_amber_outlined,
-                                        color: Colors.red,
-                                      ),
-                                    );
-                                  }, loading: () {
-                                    return const IconButton(
-                                      onPressed: null,
-                                      icon: Icon(
-                                        Icons.refresh_outlined,
-                                        color: Colors.white,
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ],
+                                          );
+                                        },
+                                        icon: Icon(
+                                          data.status == "ok"
+                                              ? (DateTime.fromMillisecondsSinceEpoch(
+                                                              data.time)
+                                                          .difference(
+                                                              DateTime.now())
+                                                          .inMinutes >
+                                                      20
+                                                  ? Icons.question_mark
+                                                  : Icons.check_circle_outline)
+                                              : Icons.error_outline,
+                                          color: data.status == "ok"
+                                              ? (DateTime.fromMillisecondsSinceEpoch(
+                                                              data.time)
+                                                          .difference(
+                                                              DateTime.now())
+                                                          .inMinutes >
+                                                      20
+                                                  ? Colors.grey
+                                                  : Colors.green)
+                                              : Colors.red,
+                                        ),
+                                      );
+                                    }, error: (err, stack) {
+                                      return IconButton(
+                                        onPressed: () {
+                                          context.push(
+                                            "/error",
+                                            extra: ErrorObject(
+                                              error: err.toString(),
+                                              stackTrace: stack.toString(),
+                                              onRetry: (context) {
+                                                context.pop();
+                                              },
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.warning_amber_outlined,
+                                          color: Colors.red,
+                                        ),
+                                      );
+                                    }, loading: () {
+                                      return const IconButton(
+                                        onPressed: null,
+                                        icon: Icon(
+                                          Icons.refresh_outlined,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ],
+                            ),
                           )),
                     ),
               title: Text(title()),
@@ -280,6 +353,21 @@ class HomeScreen extends HookConsumerWidget {
 
                     final maxAll = max(maxWaterTemp, maxOutsideTemp);
 
+                    final reducedTimes = (dates.length / 6).ceil();
+                    final formattedDates = <String>[];
+                    var counter = 0;
+                    for (var i = 0; i < dates.length; i++) {
+                      if (counter == 0) {
+                        formattedDates.add(DateFormat.Hm().format(dates[i]));
+                      } else {
+                        formattedDates.add("");
+                      }
+                      counter++;
+                      if (counter >= reducedTimes) {
+                        counter = 0;
+                      }
+                    }
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8.0, vertical: 16),
@@ -305,22 +393,12 @@ class HomeScreen extends HookConsumerWidget {
                             size: const Size(double.infinity, 400),
                             labelY: [
                               "0",
-                              NumberFormat.decimalPatternDigits(
-                                      decimalDigits: 0)
-                                  .format((maxAll * 0.25)),
-                              NumberFormat.decimalPatternDigits(
-                                      decimalDigits: 0)
-                                  .format((maxAll * 0.50)),
-                              NumberFormat.decimalPatternDigits(
-                                      decimalDigits: 0)
-                                  .format((maxAll * 0.75)),
-                              NumberFormat.decimalPatternDigits(
-                                      decimalDigits: 0)
-                                  .format(maxAll),
+                              "${NumberFormat.decimalPatternDigits(decimalDigits: 0).format((maxAll * 0.25))} C°",
+                              "${NumberFormat.decimalPatternDigits(decimalDigits: 0).format((maxAll * 0.50))} C°",
+                              "${NumberFormat.decimalPatternDigits(decimalDigits: 0).format((maxAll * 0.75))} C°",
+                              "${NumberFormat.decimalPatternDigits(decimalDigits: 0).format(maxAll)} C°",
                             ],
-                            labelX: dates
-                                .map((e) => DateFormat.Hm().format(e))
-                                .toList(),
+                            labelX: formattedDates,
                             showDescription: true,
                           ),
                           const SizedBox(
@@ -336,9 +414,7 @@ class HomeScreen extends HookConsumerWidget {
                               ),
                             ],
                             size: const Size(double.infinity, 400),
-                            labelX: dates
-                                .map((e) => DateFormat.Hm().format(e))
-                                .toList(),
+                            labelX: formattedDates,
                             labelY: [
                               for (var i = 0; i <= 100; i += 20)
                                 NumberFormat.percentPattern().format(i / 100),

@@ -23,6 +23,7 @@ dependencies:
   flutter_native_splash: ^2.2.19
   flex_color_scheme: ^7.0.5
   connectivity_plus: ^4.0.1
+  animations: ^2.0.7
 
 dev_dependencies:
   flutter_test:

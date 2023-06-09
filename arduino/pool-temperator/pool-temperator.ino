@@ -26,6 +26,8 @@ const char* password = STAPSK;
 const char* host = "192.168.178.36";
 const uint16_t port = 8090;
 
+const int buttonPin = D1;
+
 DHT dht(DHTPIN, DHTTYPE);
 
 ESP8266WiFiMulti WiFiMulti;
@@ -37,6 +39,8 @@ Thermistor* thermistor;
 int sendTimer = 1;
 
 int clearNum = -1;
+
+int displayTimer = 0;
 
 bool wasError = false;
 
@@ -75,6 +79,7 @@ int getLcdAddress() {
 LiquidCrystal_I2C lcd(getLcdAddress(), 16, 2);
 
 void setup() {
+  pinMode(buttonPin, INPUT);
   dht.begin();
   lcd.init();
   lcd.backlight();
@@ -104,6 +109,7 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   lcd.createChar(0, grad);
+  displayTimer = 11;
 }
 
 void clearLcd(int num) {
@@ -113,22 +119,48 @@ void clearLcd(int num) {
   }
 }
 
-void loop() {
+int retryCounter = 0;
+
+void setTimer(int time) {
+    if(displayTimer == 0) {
+      lcd.display();
+      lcd.backlight();
+    }
+    displayTimer = time;
+}
+
+void kmsLoop() {
+  if(displayTimer != 0) {
+    displayTimer--;
+    if(displayTimer == 0) {
+      lcd.clear();
+      lcd.noDisplay();
+      lcd.noBacklight();
+    }
+  }
+
   if(!client.connected()) {
-    if (!client.connect(host, port)) {
-      Serial.println("connection failed");
-      Serial.println("wait 5 sec...");
-      clearLcd(3);
-      lcd.setCursor(0, 0);
-      lcd.print("Verb. Fehler!"); 
-      for(int i = 5; i > 0; i--) {
-      lcd.setCursor(0, 1);
-        lcd.print("Neuversuch: " + String(i)); 
-        delay(1000);
+    if(retryCounter == 0) {
+      if (!client.connect(host, port)) {
+        Serial.println("connection failed");
+        Serial.println("wait 5 sec...");
+        retryCounter = 5;
+      } else {
+        sendTimer = 1;
+        retryCounter = 0;
       }
+    }
+
+    if(retryCounter != 0) {
+      if(displayTimer != 0) {
+        clearLcd(3);
+        lcd.setCursor(0, 0);
+        lcd.print("Verb. Fehler!"); 
+        lcd.setCursor(0, 1);
+        lcd.print("Neuversuch: " + String(retryCounter)); 
+      }
+      retryCounter--;
       return;
-    } else {
-      sendTimer = 1;
     }
   }
 
@@ -144,10 +176,12 @@ void loop() {
     wasError = true;
     client.println("error: Failed to read from sensor!");
 
-    clearLcd(1);
-    lcd.setCursor(0, 0);
-    lcd.print("Fehler: Sensor");
-    lcd.setCursor(0, 1);
+    if(displayTimer != 0) {
+      clearLcd(1);
+      lcd.setCursor(0, 0);
+      lcd.print("Fehler: Sensor");
+      lcd.setCursor(0, 1);
+    }
     if(isnan(humi)) {
       lcd.print("Humi ");
     }
@@ -158,13 +192,15 @@ void loop() {
       lcd.print("Wasser ");
     }
   } else {
-    clearLcd(0);
-    lcd.setCursor(0, 0);
-    lcd.print("Wasser: " + String(temp) + "C");
-    lcd.write(0);
-    lcd.setCursor(0, 1);
-    lcd.print("Aussen: " + String(tempC) + "C");
-    lcd.write(0);
+    if(displayTimer != 0) {
+      clearLcd(0);
+      lcd.setCursor(0, 0);
+      lcd.print("Wasser: " + String(temp) + "C");
+      lcd.write(0);
+      lcd.setCursor(0, 1);
+      lcd.print("Aussen: " + String(tempC) + "C");
+      lcd.write(0);
+    }
     
     if(wasError) {
       wasError = false;
@@ -187,5 +223,17 @@ void loop() {
       sendTimer = 60 - 4;
     }
   }
-  delay(1000);
+}
+
+int kmsTimer = 20;
+
+void loop() {
+  if(digitalRead(buttonPin) == HIGH) {
+    setTimer(11);
+  }
+  if(kmsTimer++ == 1000 / 50) {
+    kmsLoop();
+    kmsTimer = 0;
+  }
+  delay(50);
 }
