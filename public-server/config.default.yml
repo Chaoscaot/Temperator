@@ -1,7 +1,0 @@
-database: "[Database Name]"
-user: "[Database User]"
-password: "[Your PW]"
-host: "[Datapase Host]"
-port: "[Database Port]"
-token: "[Your Token]"
-serverPort: "8080"

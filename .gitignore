@@ -102,3 +102,4 @@ sqlpw.txt
 config.yml
 config.yml
 /arduino/pool-temperator/secret.h
+/.idea/

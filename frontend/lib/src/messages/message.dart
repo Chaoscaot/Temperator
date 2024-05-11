@@ -31,7 +31,7 @@ String graphNoData() => Intl.message(
     );
 
 String humidity() => Intl.message(
-      "Luftfeuchtigkeit",
+      "Feuchtigkeit",
       name: "humidity",
       desc: "Humidity",
     );

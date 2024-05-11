@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:animations/animations.dart';
+import 'package:dio/dio.dart';
 import 'package:draw_graph/draw_graph.dart';
 import 'package:draw_graph/models/feature.dart';
 import 'package:flutter/material.dart';
@@ -11,11 +13,12 @@ import 'package:pool_temp_app/src/provider/temperature.dart';
 import 'package:intl/intl.dart';
 import 'package:pool_temp_app/src/messages/message.dart';
 import 'package:pool_temp_app/src/screen/misc/error_screen.dart';
+import 'package:pool_temp_app/src/types/api.dart';
 
 class HomeScreen extends HookConsumerWidget {
   HomeScreen({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -24,36 +27,21 @@ class HomeScreen extends HookConsumerWidget {
     final selectedTemp = useState(0);
     final lastSelectedTemp = useState(0);
 
-    final device = ref.watch(deviceIdProvider);
-
-    if (device.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    } else if (device.hasError) {
-      final error = ErrorObject(
-        error: device.error.toString(),
-        stackTrace: StackTrace.current.toString(),
-        onRetry: (context) {
-          ref.invalidate(deviceIdProvider);
-        },
-      );
-      return ErrorScreen(errorObject: error);
-    }
-
-    final currentTemp = ref.watch(currentTempProvider(device.asData!.value));
+    final currentTemp = ref.watch(currentTempProvider);
 
     if (currentTemp.hasError) {
+      debugPrint(currentTemp.error.toString());
       final error = ErrorObject(
         error: currentTemp.error.toString(),
-        stackTrace: StackTrace.current.toString(),
+        stackTrace: (currentTemp.error as DioException).stackTrace.toString(),
         onRetry: (context) {
-          ref.invalidate(currentTempProvider(device.asData!.value));
+          ref.invalidate(currentTempProvider);
         },
       );
       return ErrorScreen(errorObject: error);
     }
 
-    final status = ref.watch(deviceStatusProvider(device.asData!.value));
-    final chartData = ref.watch(chartDataProvider(device.asData!.value));
+    final chartData = ref.watch(chartDataProvider);
 
     return Scaffold(
       drawerEnableOpenDragGesture: true,
@@ -63,7 +51,7 @@ class HomeScreen extends HookConsumerWidget {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).cardColor,
               ),
               child: FittedBox(
                 child: Text(drawerHeader()),
@@ -101,14 +89,14 @@ class HomeScreen extends HookConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () {
-                  ref.invalidate(currentTempProvider(device.asData!.value));
-                  ref.invalidate(chartDataProvider(device.asData!.value));
-                  ref.invalidate(deviceStatusProvider(device.asData!.value));
+                  ref.invalidate(currentTempProvider);
+                  ref.invalidate(chartDataProvider);
                 },
               )
             ],
-            iconTheme: const IconThemeData(color: Colors.white),
-            backgroundColor: Theme.of(context).primaryColor,
+            iconTheme: IconThemeData(
+                color: Theme.of(context).appBarTheme.foregroundColor),
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
             expandedHeight: 400,
             primary: true,
             flexibleSpace: FlexibleSpaceBar(
@@ -166,8 +154,11 @@ class HomeScreen extends HookConsumerWidget {
                                     },
                                     style: ButtonStyle(
                                       textStyle: MaterialStateProperty.all(
-                                        const TextStyle(
-                                            color: Colors.white, fontSize: 10),
+                                        TextStyle(
+                                            color: Theme.of(context)
+                                                .appBarTheme
+                                                .foregroundColor,
+                                            fontSize: 10),
                                       ),
                                     ),
                                     selected: {selectedTemp.value},
@@ -211,21 +202,28 @@ class HomeScreen extends HookConsumerWidget {
                                   child: IndexedStack(
                                     key: ValueKey(selectedTemp.value),
                                     index: selectedTemp.value,
+                                    alignment: Alignment.center,
                                     children: [
                                       Text(
-                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.waterTemp)} C°",
-                                          style: const TextStyle(
-                                              color: Colors.white,
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.waterTemp ?? 0)} C°",
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .appBarTheme
+                                                  .foregroundColor,
                                               fontSize: 64)),
                                       Text(
-                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.outsideTemp)} C°",
-                                          style: const TextStyle(
-                                              color: Colors.white,
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.outsideTemp ?? 0)} C°",
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .appBarTheme
+                                                  .foregroundColor,
                                               fontSize: 64)),
                                       Text(
-                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.humidity)} %",
-                                          style: const TextStyle(
-                                              color: Colors.white,
+                                          "${NumberFormat.decimalPatternDigits(decimalDigits: 1).format(currentTemp.value!.humidity ?? 0)} %",
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .appBarTheme
+                                                  .foregroundColor,
                                               fontSize: 64)),
                                     ],
                                   ),
@@ -234,96 +232,21 @@ class HomeScreen extends HookConsumerWidget {
                                     DateFormat.yMd().add_Hm().format(
                                         DateTime.fromMillisecondsSinceEpoch(
                                             currentTemp.value!.time)),
-                                    style: const TextStyle(
-                                        color: Colors.white70, fontSize: 16)),
-                                const Spacer(flex: 1),
-                                Row(
-                                  children: [
-                                    status.when(data: (data) {
-                                      return IconButton(
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) {
-                                              return AlertDialog(
-                                                title: Text(
-                                                    "Status: ${data.status}"),
-                                                content: Text(DateFormat.yMd()
-                                                    .add_Hm()
-                                                    .format(DateTime
-                                                        .fromMillisecondsSinceEpoch(
-                                                            data.time))),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      Navigator.of(context)
-                                                          .pop();
-                                                    },
-                                                    child: const Text("OK"),
-                                                  )
-                                                ],
-                                              );
-                                            },
-                                          );
-                                        },
-                                        icon: Icon(
-                                          data.status == "ok"
-                                              ? (DateTime.fromMillisecondsSinceEpoch(
-                                                              data.time)
-                                                          .difference(
-                                                              DateTime.now())
-                                                          .inMinutes >
-                                                      20
-                                                  ? Icons.question_mark
-                                                  : Icons.check_circle_outline)
-                                              : Icons.error_outline,
-                                          color: data.status == "ok"
-                                              ? (DateTime.fromMillisecondsSinceEpoch(
-                                                              data.time)
-                                                          .difference(
-                                                              DateTime.now())
-                                                          .inMinutes >
-                                                      20
-                                                  ? Colors.grey
-                                                  : Colors.green)
-                                              : Colors.red,
-                                        ),
-                                      );
-                                    }, error: (err, stack) {
-                                      return IconButton(
-                                        onPressed: () {
-                                          context.push(
-                                            "/error",
-                                            extra: ErrorObject(
-                                              error: err.toString(),
-                                              stackTrace: stack.toString(),
-                                              onRetry: (context) {
-                                                context.pop();
-                                              },
-                                            ),
-                                          );
-                                        },
-                                        icon: const Icon(
-                                          Icons.warning_amber_outlined,
-                                          color: Colors.red,
-                                        ),
-                                      );
-                                    }, loading: () {
-                                      return const IconButton(
-                                        onPressed: null,
-                                        icon: Icon(
-                                          Icons.refresh_outlined,
-                                          color: Colors.white,
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .appBarTheme
+                                            .foregroundColor,
+                                        fontSize: 16)),
+                                const Spacer(),
                               ],
                             ),
                           )),
                     ),
-              title: Text(title()),
+              title: Text(
+                title(),
+                style: TextStyle(
+                    color: Theme.of(context).appBarTheme.foregroundColor),
+              ),
             ),
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(
@@ -335,9 +258,10 @@ class HomeScreen extends HookConsumerWidget {
           SliverList(
             delegate: SliverChildListDelegate(
               [
+                _PumpWidget(currentTemp: currentTemp),
                 chartData.when(
                   data: (data) {
-                    if (data.isEmpty) {
+                    if (data.length < 2) {
                       return Center(child: Text(graphNoData()));
                     }
 
@@ -435,4 +359,113 @@ class HomeScreen extends HookConsumerWidget {
       ),
     );
   }
+}
+
+class _PumpWidget extends HookConsumerWidget {
+  const _PumpWidget({
+    super.key,
+    required this.currentTemp,
+  });
+
+  final AsyncValue<CurrentTemperature> currentTemp;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pumpLoading = useState(false);
+
+    final counter = useState(0);
+
+    useEffect(() {
+      final timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        counter.value++;
+      });
+      return timer.cancel;
+    }, []);
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Card(
+        clipBehavior: Clip.hardEdge,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.cyclone),
+                          Text(
+                            "Pool Pumpe",
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      if (currentTemp.valueOrNull?.pump ?? false)
+                        Text(
+                          "Laufzeit: ${_printDuration(DateTime.now().difference(
+                            DateTime.fromMillisecondsSinceEpoch(
+                                    currentTemp.valueOrNull?.lastPumpToggle ??
+                                        0,
+                                    isUtc: false)
+                                .subtract(DateTime.now().timeZoneOffset),
+                          ))}",
+                        )
+                      else
+                        const Text("Pumpe ist ausgeschaltet"),
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      FilledButton.tonalIcon(
+                        style: ButtonStyle(
+                          backgroundColor: MaterialStateProperty.all(
+                              currentTemp.valueOrNull?.pump ?? false
+                                  ? Colors.green
+                                  : Colors.red),
+                        ),
+                        onPressed: pumpLoading.value
+                            ? null
+                            : () async {
+                                pumpLoading.value = true;
+                                await ref.read(repositoryProvider).togglePump();
+                                ref.invalidate(currentTempProvider);
+                                await ref.read(currentTempProvider.future);
+                                pumpLoading.value = false;
+                              },
+                        icon: const Icon(Icons.power_settings_new),
+                        label: Text(
+                          "Pumpenstatus ändern",
+                        ),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            if (pumpLoading.value)
+              LinearProgressIndicator()
+            else
+              const SizedBox(
+                height: 4,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _printDuration(Duration duration) {
+  String negativeSign =
+      duration.isNegative && duration.inSeconds > 1 ? '-' : '';
+  String twoDigits(int n) => n.toString().padLeft(2, "0");
+  String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60).abs());
+  String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60).abs());
+  return "$negativeSign${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
 }

@@ -1,133 +1,60 @@
-#include <DHT.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
-#include <Thermistor.h>
-#include <NTC_Thermistor.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include "secret.h"
-
-#define DHTPIN 14
-#define DHTTYPE DHT11
-
-#ifndef STASSID
-#define STASSID WLAN_NAME
-#define STAPSK WLAN_PASSWORD
-#endif
-
-#define Referenzwiderstand   10000
-#define Nominalwiderstand      10000
-#define Nominaltemperatur    25
-#define BWert                3950
-
-const char* ssid = STASSID;
-const char* password = STAPSK;
-
-const char* host = "192.168.178.36";
-const uint16_t port = 8090;
-
-const int buttonPin = D1;
-
-DHT dht(DHTPIN, DHTTYPE);
-
-ESP8266WiFiMulti WiFiMulti;
-
-WiFiClient client;
-
-Thermistor* thermistor;
-
-int sendTimer = 1;
-
-int clearNum = -1;
-
-int displayTimer = 0;
-
-bool wasError = false;
-
-byte grad[8] = {
-	0b01100,
-	0b10010,
-	0b10010,
-	0b01100,
-	0b00000,
-	0b00000,
-	0b00000,
-	0b00000
-};
-
-int getLcdAddress() {
+int getInt() {
   Serial.begin(115200);
-  Wire.begin(2,0);
-  byte error, address;
-  Serial.println("Scanning...");
-  for(address = 1; address < 127; address++ ) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
-    if (error == 0) {
-      Serial.print("I2C device found at address 0x");
-      if (address<16) {
-        Serial.print("0");
-      }
-      Serial.println(address,HEX);
-      return address;
-    } 
-  }
-  Serial.println("No I2C devices found\n");
-  return 0;
+  return 1;
 }
 
-LiquidCrystal_I2C lcd(getLcdAddress(), 16, 2);
+int _ = getInt();
+
+#include "config.h"
+
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
+#include <LiquidCrystal_I2C.h>
+#include "wifi.h"
+#include "display.h"
+#include "sensors.h"
+#include "io.h"
+
+int debounce = 0;
+
+void IRAM_ATTR interrupt() {
+  if(debounce == 0) {
+    if(dp_displayTimer == 0) {
+      dp_enable();
+    }
+
+    debounce++;
+  }
+}
 
 void setup() {
   pinMode(buttonPin, INPUT);
-  dht.begin();
-  lcd.init();
-  lcd.backlight();
-  lcd.print("Startet...");
-  thermistor = new NTC_Thermistor(A0, Referenzwiderstand, Nominalwiderstand, Nominaltemperatur, BWert);
+  attachInterrupt(digitalPinToInterrupt(buttonPin), interrupt, RISING);
 
-  // We start by connecting to a WiFi network
-  WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP(ssid, password);
-
-  Serial.println();
-  Serial.println();
-  lcd.setCursor(0, 1);
-  lcd.print("Verbinde zu WiFi"); 
-  Serial.print("Wait for WiFi... ");
-
-  while (WiFiMulti.run() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.println("");
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("WiFi Verbunden");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  lcd.createChar(0, grad);
-  displayTimer = 11;
+  sensors_init();
+  dp_init();
+  wifi_connect();
 }
 
-void clearLcd(int num) {
-  if(num != clearNum) {
-    clearNum = num;
-    lcd.clear();
+int counter = 0;
+
+void loop() {
+  io_check();
+
+  if (counter == 0) {
+    debounce = 0;
+    sensors_update();
+    io_asend();
+    dp_update();
   }
+
+  delay(50);
+  if(counter++ == 20) counter = 0;
 }
+
+/*
 
 int retryCounter = 0;
-
-void setTimer(int time) {
-    if(displayTimer == 0) {
-      lcd.display();
-      lcd.backlight();
-    }
-    displayTimer = time;
-}
 
 void kmsLoop() {
   if(displayTimer != 0) {
@@ -163,13 +90,6 @@ void kmsLoop() {
       return;
     }
   }
-
-  // read humidity
-  float humi  = dht.readHumidity();
-  // read temperature as Celsius
-  float tempC = dht.readTemperature();
-
-  float temp = thermistor->readCelsius();
 
   // check if any reads failed
   if (isnan(humi) || isnan(tempC) || isnan(temp)) {
@@ -207,6 +127,33 @@ void kmsLoop() {
       sendTimer = 1;
     }
 
+    while(client.available()) {
+      char buf[5];
+      buf[4] = 0;
+      client.read(buf, 4);
+      Serial.write(buf);
+      Serial.write(strcmp(buf, "send"));
+      if(!strcmp(buf, "send")) {
+        humi  = dht.readHumidity();
+        tempC = dht.readTemperature();
+        temp = thermistor->readCelsius();
+        client.print("Hum:");
+        client.print(humi);
+        client.print(";"); 
+        client.print("Temp1:");
+        client.print(tempC);
+        client.print(";");
+        client.print("Temp2:");
+        client.print(temp);
+        client.print(";");
+        client.print("Pump:");
+        client.println(currentPump);
+      } else if(!strcmp(buf, "pump")) {
+        currentPump = !currentPump;
+        digitalWrite(pumpPin, currentPump);
+      }
+    }
+
     if(--sendTimer == 0) {
       client.print("Hum:");
       client.print(humi);
@@ -219,7 +166,12 @@ void kmsLoop() {
       client.print(";"); 
 
       client.print("Temp2:");
-      client.println(temp);
+      client.print(temp);
+
+      client.print(";"); 
+
+      client.print("Pump:");
+      client.println(currentPump);
       sendTimer = 60 - 4;
     }
   }
@@ -237,3 +189,4 @@ void loop() {
   }
   delay(50);
 }
+*/

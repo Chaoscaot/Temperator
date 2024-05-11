@@ -4,7 +4,7 @@ import 'package:pool_temp_app/src/messages/message.dart';
 class ErrorScreen extends StatelessWidget {
   final ErrorObject errorObject;
 
-  const ErrorScreen({Key? key, required this.errorObject}) : super(key: key);
+  const ErrorScreen({super.key, required this.errorObject});
 
   @override
   Widget build(BuildContext context) {

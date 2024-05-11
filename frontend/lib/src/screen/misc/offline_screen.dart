@@ -3,8 +3,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class OfflineScreen extends HookConsumerWidget {
   const OfflineScreen({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -12,10 +12,10 @@ class OfflineScreen extends HookConsumerWidget {
       appBar: AppBar(
         title: const Text("Offline"),
       ),
-      body: Center(
+      body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(
               Icons.wifi_off,
               size: 100,

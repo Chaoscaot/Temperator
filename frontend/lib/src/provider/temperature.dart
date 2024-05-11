@@ -10,7 +10,7 @@ final prefsProvider = FutureProvider<SharedPreferences>((ref) async {
 });
 
 final baseUrlProvider = Provider<String>((ref) {
-  return "https://pool.chaoscaot.de";
+  return "https://pool.chaoscaot.de/api/v1";
 });
 
 final httpProvider = Provider<Dio>((ref) {
@@ -30,29 +30,16 @@ final deviceIdProvider = FutureProvider<String>((ref) {
   });
 });
 
-final deviceProvider = Provider.family<PoolRepository, String>((ref, devId) {
-  return PoolRepository(ref.watch(httpProvider), devId);
+final repositoryProvider = Provider<PoolRepository>((ref) {
+  return PoolRepository(ref.watch(httpProvider));
 });
 
-final emptyDeviceProvider = Provider<PoolRepository>((ref) {
-  return PoolRepository(ref.watch(httpProvider), "");
+final currentTempProvider =
+    FutureProvider.autoDispose<CurrentTemperature>((ref) async {
+  return ref.watch(repositoryProvider).loadCurrent();
 });
 
-final currentTempProvider = FutureProvider.family
-    .autoDispose<CurrentTemperature, String>((ref, devId) async {
-  return ref.watch(deviceProvider(devId)).loadCurrent();
-});
-
-final devicesProvider = FutureProvider<List<Device>>((ref) async {
-  return ref.watch(emptyDeviceProvider).loadDevices();
-});
-
-final chartDataProvider = FutureProvider.autoDispose
-    .family<List<ChartData>, String>((ref, devId) async {
-  return ref.watch(deviceProvider(devId)).loadChartData();
-});
-
-final deviceStatusProvider =
-    FutureProvider.autoDispose.family<DeviceStatus, String>((ref, devId) async {
-  return ref.watch(deviceProvider(devId)).loadStatus();
+final chartDataProvider =
+    FutureProvider.autoDispose<List<ChartData>>((ref) async {
+  return ref.watch(repositoryProvider).loadChartData();
 });
