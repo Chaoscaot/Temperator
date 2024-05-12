@@ -11,6 +11,7 @@ use diesel::{ExpressionMethods, insert_into, MysqlConnection, QueryDsl, RunQuery
 use diesel::prelude::*;
 use diesel::query_dsl::methods::OrderDsl;
 use diesel::query_dsl::positional_order_dsl::IntoOrderColumn;
+use diesel::r2d2::{ConnectionManager, Pool};
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use serde_json::Value;
@@ -25,7 +26,7 @@ const TOKEN: &str = include_str!("token.txt");
 
 #[derive(Clone)]
 struct AppState {
-    db: Arc<Mutex<MysqlConnection>>,
+    db: Pool<ConnectionManager<MysqlConnection>>,
     connected: Arc<Mutex<bool>>,
     to_tx: Arc<Mutex<watch::Sender<InternalMessage>>>,
     to_rx: Arc<Mutex<watch::Receiver<InternalMessage>>>,
@@ -74,10 +75,10 @@ async fn index_handler(State(state): State<Arc<AppState>>) -> Result<Json<Value>
 
         Ok(Json(serde_json::to_value(Datapoint::from(temp.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?, state.last_pump_toggle.lock().await.and_utc().timestamp_millis())).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?))
     } else {
-        let db = &mut *state.db.lock().await;
+        let mut db = state.db.get().unwrap();
         use schema::datapoints::dsl::*;
 
-        let dp = OrderDsl::order(datapoints.select(crate::models::Datapoint::as_select()), time.desc()).first(db).map_err(|e| {
+        let dp = OrderDsl::order(datapoints.select(crate::models::Datapoint::as_select()), time.desc()).first(&mut db).map_err(|e| {
             println!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
@@ -152,7 +153,7 @@ async fn websocket(ws: WebSocket, state: Arc<AppState>) {
 
             insert_into(datapoints)
                 .values((time.eq(DateTime::from_timestamp_millis(dp.time).unwrap().naive_utc()), humidity.eq(dp.humidity.unwrap_or(0f32)), air_temp.eq(dp.air_temp.unwrap_or(0f32)), water_temp.eq(dp.water_temp.unwrap_or(0f32))))
-                .execute(&mut *state_clone.db.lock().await).unwrap();
+                .execute(&mut state_clone.db.get().unwrap()).unwrap();
 
             sleep(tokio::time::Duration::from_secs(60 * 10)).await;
         }
@@ -193,10 +194,10 @@ async fn pump_handler(State(state): State<Arc<AppState>>) -> Result<Json<Value>,
 }
 
 async fn chart_data(State(state): State<Arc<AppState>>) -> Result<Json<Value>, StatusCode> {
-    let db = &mut *state.db.lock().await;
+    let mut db = state.db.get().unwrap();
 
     let data = sql_query("SELECT FROM_UNIXTIME(UNIX_TIMESTAMP(time) - MOD(UNIX_TIMESTAMP(time), 3600)) as hour, AVG(humidity) as humidity, AVG(air_temp) as air_temp, AVG(water_temp) as water_temp FROM datapoints WHERE TIMESTAMPDIFF(hour, time, NOW()) < 24 GROUP BY hour")
-        .load::<crate::models::ChartData>(db);
+        .load::<crate::models::ChartData>(&mut db);
 
     #[derive(Serialize)]
     struct ChartDataResponse {
@@ -252,7 +253,7 @@ pub fn get_app() -> Router {
     let from_tx = Arc::new(Mutex::new(from_tx));
     let to_tx = Arc::new(Mutex::new(to_tx));
 
-    let state = Arc::new(AppState { db: Arc::new(Mutex::new(db)), connected: Arc::new(Mutex::new(false)), to_tx, to_rx, from_tx, from_rx, last_pump_toggle: Arc::new(Mutex::new(Local::now().naive_utc())) });
+    let state = Arc::new(AppState { db, connected: Arc::new(Mutex::new(false)), to_tx, to_rx, from_tx, from_rx, last_pump_toggle: Arc::new(Mutex::new(Local::now().naive_utc())) });
 
     Router::new()
         .route("/ws", get(websocket_handler))
