@@ -2,7 +2,7 @@ name: pool_temp_app
 description: Frontend for the PoolApi
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '^3.3.4'
@@ -23,6 +23,10 @@ dependencies:
   flutter_native_splash: ^2.2.19
   flex_color_scheme: ^7.0.5
   animations: ^2.0.7
+  firebase_core: ^2.31.0
+  firebase_analytics: ^10.10.5
+  firebase_crashlytics: ^3.5.5
+  firebase_remote_config: ^4.4.5
 
 dev_dependencies:
   flutter_test:

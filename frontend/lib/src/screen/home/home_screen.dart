@@ -33,7 +33,7 @@ class HomeScreen extends HookConsumerWidget {
       debugPrint(currentTemp.error.toString());
       final error = ErrorObject(
         error: currentTemp.error.toString(),
-        stackTrace: (currentTemp.error as DioException).stackTrace.toString(),
+        stackTrace: (currentTemp.error as DioException).stackTrace,
         onRetry: (context) {
           ref.invalidate(currentTempProvider);
         },
@@ -411,10 +411,8 @@ class _PumpWidget extends HookConsumerWidget {
                         Text(
                           "Laufzeit: ${_printDuration(DateTime.now().difference(
                             DateTime.fromMillisecondsSinceEpoch(
-                                    currentTemp.valueOrNull?.lastPumpToggle ??
-                                        0,
-                                    isUtc: false)
-                                .subtract(DateTime.now().timeZoneOffset),
+                                currentTemp.valueOrNull?.lastPumpToggle ?? 0,
+                                isUtc: false),
                           ))}",
                         )
                       else

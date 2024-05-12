@@ -1,6 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pool_temp_app/src/screen/home/home_screen.dart';
+import 'package:pool_temp_app/src/screen/load/load_screen.dart';
 import 'package:pool_temp_app/src/screen/misc/error_screen.dart';
 
 import '../screen/misc/offline_screen.dart';
@@ -24,15 +25,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             return ErrorScreen(
               errorObject: ErrorObject(
                 error: "Unbekannter Fehler",
-                stackTrace: "Ein unbekannter Fehler ist aufgetreten",
+                stackTrace: null,
               ),
             );
           }
 
           return ErrorScreen(errorObject: error);
         },
-      )
+      ),
+      GoRoute(
+        path: "/load",
+        builder: (context, state) => const LoadingScreen(),
+      ),
     ],
+    initialLocation: "/load",
     debugLogDiagnostics: true,
   );
 });

@@ -24,6 +24,7 @@ class PoolTemperaturApp extends HookConsumerWidget {
       routerDelegate: router.routerDelegate,
       routeInformationProvider: router.routeInformationProvider,
       routeInformationParser: router.routeInformationParser,
+      locale: const Locale("de", "DE"),
       theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.light,

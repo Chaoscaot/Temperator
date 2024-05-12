@@ -1,11 +1,17 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:pool_temp_app/src/messages/message.dart';
 
-class ErrorScreen extends StatelessWidget {
+class ErrorScreen extends StatefulWidget {
   final ErrorObject errorObject;
 
   const ErrorScreen({super.key, required this.errorObject});
 
+  @override
+  State<ErrorScreen> createState() => _ErrorScreenState();
+}
+
+class _ErrorScreenState extends State<ErrorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -13,25 +19,33 @@ class ErrorScreen extends StatelessWidget {
         title: Text(error()),
         automaticallyImplyLeading: false,
       ),
-      floatingActionButton: errorObject.onRetry != null
+      floatingActionButton: widget.errorObject.onRetry != null
           ? FloatingActionButton(
-              onPressed: () => errorObject.onRetry!(context),
+              onPressed: () => widget.errorObject.onRetry!(context),
               child: const Icon(Icons.refresh),
             )
           : null,
       body: ListView(
         children: [
-          Text(errorObject.error),
-          Text(errorObject.stackTrace.toString()),
+          Text(widget.errorObject.error),
+          Text(widget.errorObject.stackTrace.toString()),
         ],
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseCrashlytics.instance.recordError(
+        widget.errorObject.error, widget.errorObject.stackTrace,
+        fatal: false);
   }
 }
 
 class ErrorObject {
   final String error;
-  final String stackTrace;
+  final StackTrace? stackTrace;
   final Function(BuildContext context)? onRetry;
 
   ErrorObject({required this.error, required this.stackTrace, this.onRetry});
